@@ -1,0 +1,15 @@
+# Ignore example app
+example/
+.github/
+coverage/
+node_modules/
+example/**
+
+# Ignore iOS build artifacts
+ios/Pods/
+ios/build/
+ios/DerivedData/
+
+# Misc
+*.log
+.DS_Store

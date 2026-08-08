@@ -1,0 +1,97 @@
+{
+  "name": "@noobdigital/react-native-dynamic-island",
+  "version": "1.0.0",
+  "description": "Live-updating activity cards for React Native — Live Activities / Dynamic Island on iOS 16.2+, an ongoing lock-screen notification on Android. One JS API, branded UI, deep linking, and Old/New Architecture support via classic NativeModules.",
+  "main": "lib/commonjs/index",
+  "module": "lib/module/index",
+  "types": "lib/typescript/index.d.ts",
+  "react-native": "src/index",
+  "source": "src/index",
+  "files": [
+    "src",
+    "lib",
+    "android",
+    "ios",
+    "react-native-dynamic-island.podspec",
+    "!android/build",
+    "!android/.cxx",
+    "!ios/build",
+    "!**/__tests__",
+    "!**/__fixtures__",
+    "!**/__mocks__"
+  ],
+  "scripts": {
+    "build": "yarn cache clean && bob build",
+    "prepare": "bob build",
+    "pack": "npm pack",
+    "check-pack": "npm pack --dry-run",
+    "deploy": "npm publish --access public",
+    "lint": "eslint \"**/*.{js,ts,tsx}\"",
+    "typecheck": "tsc --noEmit",
+    "test": "jest",
+    "release": "release-it"
+  },
+  "keywords": [
+    "react-native",
+    "ios",
+    "android",
+    "dynamic-island",
+    "live-activities",
+    "activitykit",
+    "widget",
+    "lock-screen",
+    "notifications",
+    "order-tracking",
+    "deep-linking"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NoobDigital/react-native-dynamic-island.git"
+  },
+  "author": "noobdigital",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/NoobDigital/react-native-dynamic-island/issues"
+  },
+  "homepage": "https://github.com/NoobDigital/react-native-dynamic-island#readme",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
+  "peerDependencies": {
+    "react": "*",
+    "react-native": "*"
+  },
+  "devDependencies": {
+    "@react-native/eslint-config": "^0.73.1",
+    "@types/jest": "^29.5.5",
+    "@types/react": "^18.2.44",
+    "eslint": "^8.51.0",
+    "jest": "^29.7.0",
+    "react": "18.2.0",
+    "react-native": "0.73.0",
+    "react-native-builder-bob": "^0.23.2",
+    "release-it": "^17.1.1",
+    "typescript": "^5.2.2"
+  },
+  "jest": {
+    "preset": "react-native",
+    "modulePathIgnorePatterns": [
+      "<rootDir>/lib/"
+    ]
+  },
+  "react-native-builder-bob": {
+    "source": "src",
+    "output": "lib",
+    "targets": [
+      "commonjs",
+      "module",
+      [
+        "typescript",
+        {
+          "project": "tsconfig.build.json"
+        }
+      ]
+    ]
+  }
+}

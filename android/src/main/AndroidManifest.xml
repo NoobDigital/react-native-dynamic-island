@@ -1,0 +1,9 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.dynamicisland">
+
+    <!-- Required on Android 13+ to post any notification, including the
+         live-update one this module uses. The host app must still request
+         it at runtime (see README) — a manifest entry alone doesn't grant it. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+</manifest>

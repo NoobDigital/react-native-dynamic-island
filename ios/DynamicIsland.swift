@@ -1,0 +1,289 @@
+import Foundation
+import React
+import ActivityKit
+
+// MARK: - Shared Activity Attributes
+//
+// This definition must match the DynamicIslandAttributes definition
+// used by the Widget Extension (DynamicIslandWidgetLiveActivity.swift).
+
+@available(iOS 16.2, *)
+public struct DynamicIslandAttributes: ActivityAttributes {
+
+    public struct ContentState: Codable, Hashable {
+        public var data: [String: String]
+
+        public init(data: [String: String]) {
+            self.data = data
+        }
+    }
+
+    public var name: String
+    public var brandName: String
+    public var stepIcons: [String]
+    public var logoAssetName: String?
+
+    public init(
+        name: String,
+        brandName: String,
+        stepIcons: [String],
+        logoAssetName: String?
+    ) {
+        self.name = name
+        self.brandName = brandName
+        self.stepIcons = stepIcons
+        self.logoAssetName = logoAssetName
+    }
+}
+
+// MARK: - React Native Module
+
+@objc(DynamicIsland)
+public class DynamicIsland: NSObject {
+
+    @available(iOS 16.2, *)
+    private static var currentActivity:
+        Activity<DynamicIslandAttributes>?
+
+    @objc
+    public static func requiresMainQueueSetup() -> Bool {
+        return false
+    }
+
+    // MARK: - Availability
+
+    @objc
+    public func areActivitiesEnabled(
+        _ resolve: @escaping RCTPromiseResolveBlock,
+        rejecter reject: @escaping RCTPromiseRejectBlock
+    ) {
+        guard #available(iOS 16.2, *) else {
+            resolve(false)
+            return
+        }
+
+        resolve(
+            ActivityAuthorizationInfo().areActivitiesEnabled
+        )
+    }
+
+    // MARK: - Start
+
+    @objc
+    public func startActivity(
+        _ content: NSDictionary,
+        attributes attrs: NSDictionary,
+        resolver resolve: @escaping RCTPromiseResolveBlock,
+        rejecter reject: @escaping RCTPromiseRejectBlock
+    ) {
+        guard #available(iOS 16.2, *) else {
+            reject(
+                "UNSUPPORTED_OS",
+                "Live Activities require iOS 16.2+",
+                nil
+            )
+            return
+        }
+
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else {
+            reject(
+                "ACTIVITIES_DISABLED",
+                "Live Activities are disabled for this app or device",
+                nil
+            )
+            return
+        }
+
+        Task {
+            do {
+                // Keep the same behaviour as Android:
+                // only one Live Activity at a time.
+                if let existing = Self.getCurrentActivity() {
+                    await existing.end(
+                        nil,
+                        dismissalPolicy: .immediate
+                    )
+                }
+
+                let data = Self.stringDictionary(
+                    from: content
+                )
+
+                let brandName = attrs["brandName"] as? String ?? "App"
+
+                let stepIcons = (attrs["stepIcons"] as? [String])
+                    ?? ["checkmark", "bag.fill", "bicycle", "mappin.and.ellipse"]
+
+                let logoAssetName = attrs["logoAssetName"] as? String
+
+                let activityAttributes = DynamicIslandAttributes(
+                    name: "DynamicIslandActivity",
+                    brandName: brandName,
+                    stepIcons: stepIcons,
+                    logoAssetName: logoAssetName
+                )
+
+                let state = DynamicIslandAttributes.ContentState(
+                    data: data
+                )
+
+                let activity = try Activity.request(
+                    attributes: activityAttributes,
+                    content: ActivityContent(
+                        state: state,
+                        staleDate: nil
+                    )
+                )
+
+                Self.currentActivity = activity
+
+                resolve(activity.id)
+
+            } catch {
+                reject(
+                    "START_FAILED",
+                    error.localizedDescription,
+                    error
+                )
+            }
+        }
+    }
+
+    // MARK: - Update
+
+    @objc
+    public func updateActivity(
+        _ content: NSDictionary,
+        resolver resolve: @escaping RCTPromiseResolveBlock,
+        rejecter reject: @escaping RCTPromiseRejectBlock
+    ) {
+        guard #available(iOS 16.2, *) else {
+            reject(
+                "UNSUPPORTED_OS",
+                "Live Activities require iOS 16.2+",
+                nil
+            )
+            return
+        }
+
+        guard let activity = Self.getCurrentActivity() else {
+            reject(
+                "NO_ACTIVITY",
+                "No Live Activity is currently running",
+                nil
+            )
+            return
+        }
+
+        let data = Self.stringDictionary(
+            from: content
+        )
+
+        let state = DynamicIslandAttributes.ContentState(
+            data: data
+        )
+
+        let activityContent = ActivityContent(
+            state: state,
+            staleDate: nil
+        )
+
+        Task {
+            await activity.update(activityContent)
+
+            Self.currentActivity = activity
+
+            resolve(true)
+        }
+    }
+
+    // MARK: - End
+
+    @objc
+    public func endActivity(
+        _ resolve: @escaping RCTPromiseResolveBlock,
+        rejecter reject: @escaping RCTPromiseRejectBlock
+    ) {
+        guard #available(iOS 16.2, *) else {
+            resolve(true)
+            return
+        }
+
+        guard let activity = Self.getCurrentActivity() else {
+            resolve(true)
+            return
+        }
+
+        Task {
+            await activity.end(
+                nil,
+                dismissalPolicy: .immediate
+            )
+
+            Self.currentActivity = nil
+
+            resolve(true)
+        }
+    }
+
+    // MARK: - Activity Recovery
+
+    @available(iOS 16.2, *)
+    private static func getCurrentActivity()
+        -> Activity<DynamicIslandAttributes>? {
+
+        // First use cached activity.
+        if let current = currentActivity {
+            return current
+        }
+
+        // React Native can be restarted/recreated while the
+        // Live Activity is still running.
+        //
+        // ActivityKit owns the Live Activity, not the RN process.
+        let activities =
+            Activity<DynamicIslandAttributes>.activities
+
+        guard let activity = activities.last else {
+            return nil
+        }
+
+        currentActivity = activity
+
+        return activity
+    }
+
+    // MARK: - Dictionary Conversion
+
+    private static func stringDictionary(
+        from dict: NSDictionary
+    ) -> [String: String] {
+
+        var result: [String: String] = [:]
+
+        for (key, value) in dict {
+
+            guard let keyString = key as? String else {
+                continue
+            }
+
+            if value is NSNull {
+                continue
+            }
+
+            if let stringValue = value as? String {
+                result[keyString] = stringValue
+
+            } else if let numberValue = value as? NSNumber {
+                result[keyString] = numberValue.stringValue
+
+            } else {
+                result[keyString] = String(
+                    describing: value
+                )
+            }
+        }
+
+        return result
+    }
+}

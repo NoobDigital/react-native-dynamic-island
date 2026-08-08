@@ -1,0 +1,49 @@
+buildscript {
+    ext.getExtOrDefault = { name ->
+        rootProject.ext.has(name) ? rootProject.ext.get(name) : project.properties['DynamicIsland_' + name]
+    }
+
+    repositories {
+        google()
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath "com.android.tools.build:gradle:7.4.2"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.8.0"
+    }
+}
+
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+
+def getExtOrDefault(name) {
+    return rootProject.ext.has(name) ? rootProject.ext.get(name) : project.properties['DynamicIsland_' + name]
+}
+
+android {
+    resourcePrefix "dynamicisland_"
+    namespace "com.dynamicisland"
+    compileSdkVersion getExtOrDefault('compileSdkVersion') ?: 34
+
+    defaultConfig {
+        minSdkVersion getExtOrDefault('minSdkVersion') ?: 23
+        targetSdkVersion getExtOrDefault('targetSdkVersion') ?: 34
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+}
+
+repositories {
+    google()
+    mavenCentral()
+}
+
+dependencies {
+    implementation "com.facebook.react:react-android"
+    implementation "androidx.core:core-ktx:1.12.0"
+}
