@@ -429,7 +429,7 @@ logoAssetName: 'BrandLogo'
 ```
 
 <p align="center">
-<img src="docs/setup/ios-brand-logo-setup" width="320" alt="Brand Logo Setup" />
+<img src="docs/setup/ios-brand-logo-setup.png" width="320" alt="Brand Logo Setup" />
 </p>
 
 
