@@ -9,8 +9,12 @@ Live-updating activity cards for React Native — **Live Activities / Dynamic
 Island** on iOS, an **ongoing lock-screen notification** on Android. One JS
 API, two native implementations, both styled to match.
 
+Build Uber, Swiggy, Zomato, Noon, Talabat, Blinkit, and DoorDash-style live tracking experiences in React Native.
+
 Built for real-time order tracking, ride status, delivery ETAs, or any
 "stays on the lock screen and updates in place" use case.
+
+
 
 ## 📱 iOS Preview
 
@@ -59,17 +63,25 @@ Built for real-time order tracking, ride status, delivery ETAs, or any
 
 ---
 
+## Why Not Existing Packages?
+
+Most React Native packages either:
+
+- Support only iOS Live Activities
+- Expose completely different APIs per platform
+- Require heavy native customization
+
+This library provides one unified API for both platforms while still using the native platform experience.
+
 ## Why this package
 
-"Dynamic Island" the *visual element* — the pill-shaped cutout animation —
-is iPhone 14 Pro+ hardware and OS specific. No Android device has it, and no
-software package can add it. What this library gives you on Android instead
-is the closest real equivalent production apps actually ship for the same
-job: a persistent, in-place-updating notification that survives the lock
-screen and can't be swiped away while active. Same use case (live order
-tracking, ride status, delivery ETAs), different visual language per
-platform — but **the JS API and content shape are identical on both**, so
-you write your tracking logic once.
+Build live, updating experiences in React Native with a single API.
+
+On iOS, the library uses ActivityKit to power Live Activities and Dynamic Island.
+On Android, it provides an ongoing lock-screen notification designed for the same
+real-time tracking scenarios, such as order status, ride progress, delivery ETAs,
+sports scores, and more.
+The content model and JavaScript API are shared across both platforms, so you write
 
 - 🏝 Real ActivityKit Live Activity + Dynamic Island on iOS 16.2+
 - 🔔 Ongoing, updating notification on Android — zero manual native setup required
@@ -150,6 +162,20 @@ like `DynamicIslandWidget`. Check **"Include Live Activity"** when prompted.
 <img src="docs/setup/ios-widget-setup-step-1.png" width="320" alt="Add a Widget Extension target" />
 </p>
 
+
+<p align="center">
+<img src="docs/setup/ios-widget-setup-step-2.png" width="320" alt="Widget Extension target" />
+</p>
+
+
+<p align="center">
+<img src="docs/setup/ios-widget-setup-step-3.png" width="320" alt="Widget Extension target" />
+</p>
+
+<p align="center">
+<img src="docs/setup/ios-widget-setup-step-4.png" width="320" alt="Widget Extension target" />
+</p>
+
 ### 2. Set the deployment target correctly
 
 
@@ -161,13 +187,13 @@ Build Settings → iOS Deployment Target** on both targets and align them
 (iOS 16.2 minimum, since that's the ActivityKit API floor used by this
 library).
 
+
 <p align="center">
-<img src="docs/setup/ios-widget-setup-step-2.png" width="320" alt="Widget Extension target" />
+<img src="docs/setup/ios-widget-setup-step-8.png" width="320" alt="Widget Extension target" />
 </p>
 
-
 <p align="center">
-<img src="docs/setup/ios-widget-setup-step-3.png" width="320" alt="Widget Extension target" />
+<img src="docs/setup/ios-widget-setup-step-9.png" width="320" alt="Widget Extension target" />
 </p>
 
 ### 3. Replace the generated widget file
@@ -179,11 +205,11 @@ from this repo. Keep your target's own `DynamicIslandWidgetBundle.swift`
 will fail to compile.
 
 <p align="center">
-<img src="docs/setup/ios-widget-setup-step-5.png" width="320" alt="Setup Widget Extension" />
+<img src="docs/setup/ios-widget-setup-step-6.png" width="320" alt="Setup Widget Extension" />
 </p>
 
 <p align="center">
-<img src="docs/setup/ios-widget-setup-step-6.png" width="320" alt="Setup Widget Extension" />
+<img src="docs/setup/ios-widget-setup-step-7.png" width="320" alt="Setup Widget Extension" />
 </p>
 
 
@@ -201,6 +227,12 @@ In your **main app target's** `Info.plist` (not the extension's):
 **Main app target → General → Frameworks, Libraries, and Embedded
 Content** — confirm `DynamicIslandWidgetExtension.appex` is listed there
 ("Embed Without Signing" for Debug, signed normally for Release).
+
+
+<p align="center">
+<img src="docs/setup/ios-widget-setup-step-5.png" width="320" alt="Widget Extension target" />
+</p>
+
 
 ### 6. Build once
 

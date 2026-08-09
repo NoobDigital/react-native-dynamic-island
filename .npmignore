@@ -4,6 +4,7 @@ example/
 coverage/
 node_modules/
 example/**
+docs/**
 
 # Ignore iOS build artifacts
 ios/Pods/
