@@ -1361,9 +1361,10 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
-"@noobdigital/react-native-dynamic-island@/Users/maheshvirus/Personel/react-native-dynamic-island/noobdigital-react-native-dynamic-island-v1.0.0.tgz":
+"@noobdigital/react-native-dynamic-island@^1.0.0":
   version "1.0.0"
-  resolved "/Users/maheshvirus/Personel/react-native-dynamic-island/noobdigital-react-native-dynamic-island-v1.0.0.tgz#df093ae1c2df5b92521d936b492f66693992a624"
+  resolved "https://registry.yarnpkg.com/@noobdigital/react-native-dynamic-island/-/react-native-dynamic-island-1.0.0.tgz#98ed45119c84d024c5b74eab258c7672fcf4cc5d"
+  integrity sha512-SMGGOF+HgRc5cjBt8WjQZIzRYaka1vhNqRaQyPgpmOBQwUQgX/AXIfwkI13a/q3yr5YKc9uC266KMRUAHuiGwQ==
 
 "@react-native-async-storage/async-storage@^3.1.1":
   version "3.1.1"

@@ -27,8 +27,8 @@ const DEEP_LINK = 'sampleapp://order-tracking/4821';
 
 const BRAND: DynamicIslandAttributes = {
   brandName: 'NoobEats',
-  stepIcons: ['checkmark', 'bag.fill', 'bicycle', 'mappin.and.ellipse'],
-  // logoAssetName: 'noobeats_logo', // optional
+  stepIcons: ['checkmark', 'bag.fill', 'bicycle', 'mappin.and.ellipse'], // For ios, optional. Android ignores this. can be any SF Symbol name, one per stage, in order. Drives the progress track UI. https://developer.apple.com/sf-symbols/
+  logoAssetName: Platform.OS === 'ios' ? 'BrandLogo' : 'noobeats_logo', // optional
 };
 
 const STAGES: DynamicIslandContentState[] = [

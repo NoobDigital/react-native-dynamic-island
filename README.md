@@ -29,13 +29,9 @@ Built for real-time order tracking, ride status, delivery ETAs, or any
 ## 🎥 Live Demo (iOS & Android)
 
 <p align="center">
-  <video width="260" autoplay loop muted playsinline>
-    <source src="docs/videos/Android_live_demo.webm" type="video/webm">
-  </video>
+  <img src="docs/videos/Android_live_demo.gif" width="260" />
   &nbsp;&nbsp;&nbsp;
-  <video width="260" autoplay loop muted playsinline>
-    <source src="docs/videos/Ios_live_demo.webm" type="video/webm">
-  </video>
+  <img src="docs/videos/Ios_live_demo.gif" width="260" />
 </p>
 
 ---
@@ -88,6 +84,9 @@ you write your tracking logic once.
 
 ```sh
 npm install @noobdigital/react-native-dynamic-island
+# or
+yarn add @noobdigital/react-native-dynamic-island
+
 cd ios && pod install
 ```
 
@@ -161,6 +160,11 @@ extension at whatever Xcode defaulted it to — check **Target →
 Build Settings → iOS Deployment Target** on both targets and align them
 (iOS 16.2 minimum, since that's the ActivityKit API floor used by this
 library).
+
+<p align="center">
+<img src="docs/setup/ios-widget-setup-step-2.png" width="320" alt="Widget Extension target" />
+</p>
+
 
 <p align="center">
 <img src="docs/setup/ios-widget-setup-step-3.png" width="320" alt="Widget Extension target" />
@@ -256,7 +260,7 @@ const DEEP_LINK = 'yourapp://order-tracking/4821';
 
 const BRAND: DynamicIslandAttributes = {
   brandName: 'NoobEats',
-  stepIcons: ['checkmark', 'bag.fill', 'bicycle', 'mappin.and.ellipse'],
+  stepIcons: ['checkmark', 'bag.fill', 'bicycle', 'mappin.and.ellipse'], // Apple's official SF Symbols - icon list available on https://developer.apple.com/sf-symbols/
   logoAssetName: 'noobeats_logo', // optional — see Custom brand logo
 };
 
