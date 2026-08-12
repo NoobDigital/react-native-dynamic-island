@@ -81,7 +81,7 @@ On iOS, the library uses ActivityKit to power Live Activities and Dynamic Island
 On Android, it provides an ongoing lock-screen notification designed for the same
 real-time tracking scenarios, such as order status, ride progress, delivery ETAs,
 sports scores, and more.
-The content model and JavaScript API are shared across both platforms, so you write
+The content model and JavaScript API are shared across both platforms, so you write your tracking logic once and it renders natively on both.
 
 - 🏝 Real ActivityKit Live Activity + Dynamic Island on iOS 16.2+
 - 🔔 Ongoing, updating notification on Android — zero manual native setup required

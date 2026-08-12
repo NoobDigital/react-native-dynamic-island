@@ -1,6 +1,6 @@
 {
   "name": "@noobdigital/react-native-dynamic-island",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Live-updating activity cards for React Native — Live Activities / Dynamic Island on iOS 16.2+, an ongoing lock-screen notification on Android. One JS API, branded UI, deep linking, and Old/New Architecture support via classic NativeModules.",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",
