@@ -12,7 +12,7 @@
     "clean-android": "rm -rf node_modules && rm -rf $TMPDIR/react-* && rm -fr $TMPDIR/metro-* && watchman watch-del-all && yarn cache clean && cd android && rm -rf build && cd .. && yarn install"
   },
   "dependencies": {
-    "@noobdigital/react-native-dynamic-island": "/Users/maheshvirus/Personel/react-native-dynamic-island/noobdigital-react-native-dynamic-island-1.0.2.tgz",
+    "@noobdigital/react-native-dynamic-island": "^1.0.2",
     "@react-native-async-storage/async-storage": "^3.1.1",
     "@react-native/new-app-screen": "0.86.0",
     "react": "19.2.3",
