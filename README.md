@@ -124,9 +124,23 @@ await startActivity(
   {
     brandName: 'NoobEats',
     stepIcons: ['checkmark', 'bag.fill', 'bicycle', 'mappin.and.ellipse'],
-    logoAssetName: 'noobeats_logo', // optional
+    logoAssetName: 'noobeats_logo',
+
+    // ── Style config (v1.0.2+) ────────────────────────────────────────────
+    // All optional — omit any to keep the v1.0.1 default look.
+    titleColor: '#ffffff',
+    titleFontSize: 16,
+    statusColor: '#eae7e7',
+    statusFontSize: 13,
+    brandColor: '#FF9500',
+    brandFontSize: 12,
+    progressColor: '#FF9500',
+    progressFontSize: 12,
+    iconColor: '#FFFFFF',
+    iconSize: 28,
   }
 );
+
 
 // later, as the order progresses
 await updateActivity({
@@ -553,7 +567,20 @@ export interface DynamicIslandAttributes {
   stepIcons?: string[];
   androidStepIcons?: string[];
   logoAssetName?: string;
+
+  // Style config (v1.0.2+) — optional
+  titleColor?: string;
+  titleFontSize?: number;
+  statusColor?: string;
+  statusFontSize?: number;
+  brandColor?: string;
+  brandFontSize?: number;
+  progressColor?: string;
+  progressFontSize?: number;
+  iconColor?: string;
+  iconSize?: number;
 }
+
 ```
 
 ---

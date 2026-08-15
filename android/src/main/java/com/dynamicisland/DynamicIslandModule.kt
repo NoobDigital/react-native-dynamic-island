@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -12,10 +13,12 @@ import android.graphics.Paint
 import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.os.Build
+import android.util.TypedValue
 import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.ColorUtils
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
@@ -43,6 +46,46 @@ class DynamicIslandModule(private val reactContext: ReactApplicationContext) :
         // Single fixed id: mirrors the iOS module, which also tracks only
         // one running activity at a time.
         private const val NOTIFICATION_ID = 20260807
+
+        // Persists currentAttributes across process death — Android has no
+        // ActivityKit-style OS-level Attributes storage, so without this,
+        // backgrounding the app long enough for the process to be killed
+        // (a very normal thing to do while testing a lock-screen card)
+        // loses brandName/style config on the next updateActivity() call,
+        // even though the notification itself and the JS-side stage index
+        // both survive fine.
+        private const val PREFS_NAME = "dynamic_island_attrs"
+        private const val KEY_BRAND_NAME = "brandName"
+        private const val KEY_STEP_COUNT = "stepCount"
+        private const val KEY_ANDROID_STEP_ICONS = "androidStepIcons" // joined with KEY_LIST_DELIMITER
+        private const val KEY_LOGO_RESOURCE_NAME = "logoResourceName"
+        private const val KEY_TITLE_COLOR = "titleColor"
+        private const val KEY_TITLE_FONT_SIZE = "titleFontSize"
+        private const val KEY_STATUS_COLOR = "statusColor"
+        private const val KEY_STATUS_FONT_SIZE = "statusFontSize"
+        private const val KEY_BRAND_COLOR = "brandColor"
+        private const val KEY_BRAND_FONT_SIZE = "brandFontSize"
+        private const val KEY_PROGRESS_COLOR = "progressColor"
+        private const val KEY_PROGRESS_FONT_SIZE = "progressFontSize"
+        private const val KEY_ICON_COLOR = "iconColor"
+        private const val KEY_ICON_SIZE = "iconSize"
+        private const val KEY_HAS_SAVED_ATTRS = "hasSavedAttrs"
+        private const val LIST_DELIMITER = "\u0001"
+
+        // ── Style defaults (v1.0.2+) ────────────────────────────────────
+        // These match the exact visual look shipped in v1.0.1, so an
+        // integration that doesn't set any style attrs renders identically
+        // to before.
+        private const val DEFAULT_TITLE_COLOR = "#FFFFFF"
+        private const val DEFAULT_TITLE_FONT_SIZE_SP = 15f
+        private const val DEFAULT_STATUS_COLOR = "#99FFFFFF" // white @ ~60% alpha
+        private const val DEFAULT_STATUS_FONT_SIZE_SP = 13f
+        private const val DEFAULT_BRAND_COLOR = "#FF9500"
+        private const val DEFAULT_BRAND_FONT_SIZE_SP = 12f
+        private const val DEFAULT_PROGRESS_COLOR = "#FF9500"
+        private const val DEFAULT_PROGRESS_FONT_SIZE_SP = 12f
+        private const val DEFAULT_ICON_COLOR = "#FFFFFF"
+        private const val DEFAULT_ICON_SIZE_DP = 26f
     }
 
     /**
@@ -54,13 +97,28 @@ class DynamicIslandModule(private val reactContext: ReactApplicationContext) :
         val brandName: String,
         val stepCount: Int,
         val androidStepIcons: List<String>?, // optional drawable resource names, per step
-        val logoResourceName: String?
+        val logoResourceName: String?,
+        // ── Style config (v1.0.2+) ──────────────────────────────────────
+        val titleColor: Int,
+        val titleFontSizeSp: Float,
+        val statusColor: Int,
+        val statusFontSizeSp: Float,
+        val brandColor: Int,
+        val brandFontSizeSp: Float,
+        val progressColor: Int,
+        val progressFontSizeSp: Float,
+        val iconColor: Int,
+        val iconSizeDp: Float
     )
 
     // Stored in-memory for the life of the module, reused across update calls
     // — Android has no ActivityKit-style persistent Attributes object, so we
-    // hold it here ourselves.
+    // hold it here ourselves. Backed by SharedPreferences (see below) so it
+    // also survives process death, not just module reuse within one process.
     private var currentAttributes: LiveActivityAttributes? = null
+
+    private val prefs: SharedPreferences
+        get() = reactContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     init {
         createChannelIfNeeded()
@@ -94,7 +152,9 @@ class DynamicIslandModule(private val reactContext: ReactApplicationContext) :
 
     @ReactMethod
     fun startActivity(content: ReadableMap, attributes: ReadableMap, promise: Promise) {
-        currentAttributes = parseAttributes(attributes)
+        val parsed = parseAttributes(attributes)
+        currentAttributes = parsed
+        persistAttributes(parsed)
         postOrUpdate(content, promise)
     }
 
@@ -106,7 +166,7 @@ class DynamicIslandModule(private val reactContext: ReactApplicationContext) :
             promise.reject("NO_ACTIVITY", "No live-update notification is currently running")
             return
         }
-        // currentAttributes (brand/icons/logo) persists from startActivity —
+        // currentAttributes (brand/icons/logo/style) persists from startActivity —
         // never resent here, same as iOS only touching ContentState on update.
         postOrUpdate(content, promise)
     }
@@ -115,6 +175,7 @@ class DynamicIslandModule(private val reactContext: ReactApplicationContext) :
     fun endActivity(promise: Promise) {
         NotificationManagerCompat.from(reactContext).cancel(NOTIFICATION_ID)
         currentAttributes = null
+        clearPersistedAttributes()
         promise.resolve(true)
     }
 
@@ -139,11 +200,34 @@ class DynamicIslandModule(private val reactContext: ReactApplicationContext) :
             attrs.getString("logoAssetName")
         } else null
 
+        // ── Style config (v1.0.2+) — each falls back to the v1.0.1 default
+        // look if the key is absent or the hex string fails to parse.
+        val titleColor = parseColorOrDefault(attrs, "titleColor", DEFAULT_TITLE_COLOR)
+        val titleFontSizeSp = readFloat(attrs, "titleFontSize", DEFAULT_TITLE_FONT_SIZE_SP)
+        val statusColor = parseColorOrDefault(attrs, "statusColor", DEFAULT_STATUS_COLOR)
+        val statusFontSizeSp = readFloat(attrs, "statusFontSize", DEFAULT_STATUS_FONT_SIZE_SP)
+        val brandColor = parseColorOrDefault(attrs, "brandColor", DEFAULT_BRAND_COLOR)
+        val brandFontSizeSp = readFloat(attrs, "brandFontSize", DEFAULT_BRAND_FONT_SIZE_SP)
+        val progressColor = parseColorOrDefault(attrs, "progressColor", DEFAULT_PROGRESS_COLOR)
+        val progressFontSizeSp = readFloat(attrs, "progressFontSize", DEFAULT_PROGRESS_FONT_SIZE_SP)
+        val iconColor = parseColorOrDefault(attrs, "iconColor", DEFAULT_ICON_COLOR)
+        val iconSizeDp = readFloat(attrs, "iconSize", DEFAULT_ICON_SIZE_DP)
+
         return LiveActivityAttributes(
             brandName = brandName,
             stepCount = stepCount,
             androidStepIcons = androidStepIcons,
-            logoResourceName = logoResourceName
+            logoResourceName = logoResourceName,
+            titleColor = titleColor,
+            titleFontSizeSp = titleFontSizeSp,
+            statusColor = statusColor,
+            statusFontSizeSp = statusFontSizeSp,
+            brandColor = brandColor,
+            brandFontSizeSp = brandFontSizeSp,
+            progressColor = progressColor,
+            progressFontSizeSp = progressFontSizeSp,
+            iconColor = iconColor,
+            iconSizeDp = iconSizeDp
         )
     }
 
@@ -156,17 +240,110 @@ class DynamicIslandModule(private val reactContext: ReactApplicationContext) :
         return result
     }
 
+    private fun readFloat(attrs: ReadableMap, key: String, default: Float): Float {
+        if (!attrs.hasKey(key)) return default
+        return try {
+            attrs.getDouble(key).toFloat()
+        } catch (e: Exception) {
+            default
+        }
+    }
+
+    /** Parses a "#RRGGBB" hex string; falls back to [defaultHex] if absent, wrong type, or malformed. */
+    private fun parseColorOrDefault(attrs: ReadableMap, key: String, defaultHex: String): Int {
+        val hex = try {
+            if (attrs.hasKey(key)) attrs.getString(key) else null
+        } catch (e: Exception) {
+            // Key present but not a string (e.g. a number was passed by mistake).
+            null
+        }
+        return try {
+            Color.parseColor(if (hex.isNullOrBlank()) defaultHex else hex)
+        } catch (e: IllegalArgumentException) {
+            Color.parseColor(defaultHex)
+        }
+    }
+
+    // MARK: - Attributes persistence (survives process death)
+
+    private fun persistAttributes(attrs: LiveActivityAttributes) {
+        try {
+            prefs.edit().apply {
+                putBoolean(KEY_HAS_SAVED_ATTRS, true)
+                putString(KEY_BRAND_NAME, attrs.brandName)
+                putInt(KEY_STEP_COUNT, attrs.stepCount)
+                putString(KEY_ANDROID_STEP_ICONS, attrs.androidStepIcons?.joinToString(LIST_DELIMITER))
+                putString(KEY_LOGO_RESOURCE_NAME, attrs.logoResourceName)
+                putInt(KEY_TITLE_COLOR, attrs.titleColor)
+                putFloat(KEY_TITLE_FONT_SIZE, attrs.titleFontSizeSp)
+                putInt(KEY_STATUS_COLOR, attrs.statusColor)
+                putFloat(KEY_STATUS_FONT_SIZE, attrs.statusFontSizeSp)
+                putInt(KEY_BRAND_COLOR, attrs.brandColor)
+                putFloat(KEY_BRAND_FONT_SIZE, attrs.brandFontSizeSp)
+                putInt(KEY_PROGRESS_COLOR, attrs.progressColor)
+                putFloat(KEY_PROGRESS_FONT_SIZE, attrs.progressFontSizeSp)
+                putInt(KEY_ICON_COLOR, attrs.iconColor)
+                putFloat(KEY_ICON_SIZE, attrs.iconSizeDp)
+                apply()
+            }
+        } catch (e: Exception) {
+            // Non-fatal: worst case a future process restart falls back to
+            // hardcoded defaults instead of the real attrs — same as today.
+        }
+    }
+
+    private fun loadPersistedAttributes(): LiveActivityAttributes? {
+        return try {
+            if (!prefs.getBoolean(KEY_HAS_SAVED_ATTRS, false)) return null
+
+            val stepIconsRaw = prefs.getString(KEY_ANDROID_STEP_ICONS, null)
+            val androidStepIcons = stepIconsRaw
+                ?.takeIf { it.isNotEmpty() }
+                ?.split(LIST_DELIMITER)
+
+            LiveActivityAttributes(
+                brandName = prefs.getString(KEY_BRAND_NAME, "App") ?: "App",
+                stepCount = prefs.getInt(KEY_STEP_COUNT, 4),
+                androidStepIcons = androidStepIcons,
+                logoResourceName = prefs.getString(KEY_LOGO_RESOURCE_NAME, null),
+                titleColor = prefs.getInt(KEY_TITLE_COLOR, Color.parseColor(DEFAULT_TITLE_COLOR)),
+                titleFontSizeSp = prefs.getFloat(KEY_TITLE_FONT_SIZE, DEFAULT_TITLE_FONT_SIZE_SP),
+                statusColor = prefs.getInt(KEY_STATUS_COLOR, Color.parseColor(DEFAULT_STATUS_COLOR)),
+                statusFontSizeSp = prefs.getFloat(KEY_STATUS_FONT_SIZE, DEFAULT_STATUS_FONT_SIZE_SP),
+                brandColor = prefs.getInt(KEY_BRAND_COLOR, Color.parseColor(DEFAULT_BRAND_COLOR)),
+                brandFontSizeSp = prefs.getFloat(KEY_BRAND_FONT_SIZE, DEFAULT_BRAND_FONT_SIZE_SP),
+                progressColor = prefs.getInt(KEY_PROGRESS_COLOR, Color.parseColor(DEFAULT_PROGRESS_COLOR)),
+                progressFontSizeSp = prefs.getFloat(KEY_PROGRESS_FONT_SIZE, DEFAULT_PROGRESS_FONT_SIZE_SP),
+                iconColor = prefs.getInt(KEY_ICON_COLOR, Color.parseColor(DEFAULT_ICON_COLOR)),
+                iconSizeDp = prefs.getFloat(KEY_ICON_SIZE, DEFAULT_ICON_SIZE_DP)
+            )
+        } catch (e: Exception) {
+            // Corrupt/partial prefs (e.g. an app update changed the schema) —
+            // fall back to hardcoded defaults rather than crash.
+            null
+        }
+    }
+
+    private fun clearPersistedAttributes() {
+        try {
+            prefs.edit().clear().apply()
+        } catch (e: Exception) {
+            // Non-fatal.
+        }
+    }
+
     // MARK: - Notification building
 
     private fun postOrUpdate(content: ReadableMap, promise: Promise) {
         try {
             val map = content.toHashMap()
-            val attrs = currentAttributes ?: LiveActivityAttributes(
-                brandName = "App",
-                stepCount = 4,
-                androidStepIcons = null,
-                logoResourceName = null
-            )
+
+            // In-memory first; if this module instance was recreated after
+            // process death, recover from SharedPreferences before falling
+            // back to hardcoded defaults.
+            val attrs = currentAttributes
+                ?: loadPersistedAttributes()?.also { currentAttributes = it }
+                ?: parseAttributes(com.facebook.react.bridge.Arguments.createMap())
 
             val title = map["title"] as? String ?: ""
             val status = map["status"] as? String ?: ""
@@ -211,9 +388,26 @@ class DynamicIslandModule(private val reactContext: ReactApplicationContext) :
         views.setTextViewText(R.id.tvBrand, attrs.brandName)
         views.setTextViewText(R.id.tvEta, eta)
 
+        // ── Style config (v1.0.2+) ──────────────────────────────────────
+        views.setTextColor(R.id.tvTitle, attrs.titleColor)
+        views.setTextViewTextSize(R.id.tvTitle, TypedValue.COMPLEX_UNIT_SP, attrs.titleFontSizeSp)
+        views.setTextColor(R.id.tvStatus, attrs.statusColor)
+        views.setTextViewTextSize(R.id.tvStatus, TypedValue.COMPLEX_UNIT_SP, attrs.statusFontSizeSp)
+        views.setTextColor(R.id.tvBrand, attrs.brandColor)
+        views.setTextViewTextSize(R.id.tvBrand, TypedValue.COMPLEX_UNIT_SP, attrs.brandFontSizeSp)
+        views.setTextColor(R.id.tvEta, attrs.progressColor)
+        views.setTextViewTextSize(R.id.tvEta, TypedValue.COMPLEX_UNIT_SP, attrs.progressFontSizeSp)
+
         views.setImageViewBitmap(R.id.ivLogo, resolveLogoBitmap(attrs.logoResourceName))
         val activeStepIndex = currentStepIndex(progress, attrs.stepCount)
-        val trackBitmap = drawProgressTrack(attrs.stepCount, activeStepIndex, attrs.androidStepIcons)
+        val trackBitmap = drawProgressTrack(
+            stepCount = attrs.stepCount,
+            activeStepIndex = activeStepIndex,
+            androidStepIcons = attrs.androidStepIcons,
+            progressColor = attrs.progressColor,
+            iconColor = attrs.iconColor,
+            iconSizeDp = attrs.iconSizeDp
+        )
         views.setImageViewBitmap(R.id.ivTrack, trackBitmap)
 
         return views
@@ -227,18 +421,23 @@ class DynamicIslandModule(private val reactContext: ReactApplicationContext) :
 
     /**
      * Draws the progress track as a single bitmap: filled circles connected
-     * by lines, orange for completed steps, translucent white for pending —
-     * same visual language as the iOS SwiftUI HStack track, just rasterized
-     * since RemoteViews can't host a dynamic per-step layout natively.
+     * by lines, [progressColor] for completed steps, translucent white for
+     * pending — same visual language as the iOS SwiftUI HStack track, just
+     * rasterized since RemoteViews can't host a dynamic per-step layout
+     * natively.
      *
-     * If attrs.androidStepIcons is provided, draws those drawable resources
-     * inside each circle. Otherwise falls back to a generic checkmark for
-     * done steps and a plain dot for pending ones.
+     * If [androidStepIcons] is provided, draws those drawable resources
+     * inside each circle. Otherwise falls back to a [iconColor]-tinted
+     * checkmark for done steps and a plain dot for pending ones.
+     * [iconSizeDp] controls the circle diameter (default 26dp, matches v1.0.1).
      */
     private fun drawProgressTrack(
         stepCount: Int,
         activeStepIndex: Int,
-        androidStepIcons: List<String>?
+        androidStepIcons: List<String>?,
+        progressColor: Int,
+        iconColor: Int,
+        iconSizeDp: Float
     ): Bitmap {
         val density = reactContext.resources.displayMetrics.density
         val width = (320 * density).toInt()
@@ -249,15 +448,19 @@ class DynamicIslandModule(private val reactContext: ReactApplicationContext) :
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
 
-        val donePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#FF9500") }
+        val donePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = progressColor }
         val pendingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#26FFFFFF") }
         val checkPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.WHITE
+            color = iconColor
             strokeWidth = 2.5f * density
             style = Paint.Style.STROKE
             strokeCap = Paint.Cap.ROUND
         }
-        val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#66FFFFFF") }
+        // Pending-step dot: iconColor at ~40% alpha (0x66 of 0xFF), matching
+        // the translucency of the v1.0.1 hardcoded "#66FFFFFF".
+        val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = ColorUtils.setAlphaComponent(iconColor, 0x66)
+        }
 
         val slotWidth = width.toFloat() / stepCount
         val centerY = height / 2f
@@ -285,12 +488,12 @@ class DynamicIslandModule(private val reactContext: ReactApplicationContext) :
             if (customRes != null) {
                 val drawable = ContextCompat.getDrawable(reactContext, customRes)
                 if (drawable is BitmapDrawable) {
-                    val iconSize = (circleRadius * 1.1f).toInt()
-                    val bmp = Bitmap.createScaledBitmap(drawable.bitmap, iconSize, iconSize, true)
+                    val iconPixelSize = (circleRadius * 1.1f).toInt()
+                    val bmp = Bitmap.createScaledBitmap(drawable.bitmap, iconPixelSize, iconPixelSize, true)
                     canvas.drawBitmap(
                         bmp,
-                        centerX - iconSize / 2f,
-                        centerY - iconSize / 2f,
+                        centerX - iconPixelSize / 2f,
+                        centerY - iconPixelSize / 2f,
                         null
                     )
                 }
@@ -396,8 +599,8 @@ class DynamicIslandModule(private val reactContext: ReactApplicationContext) :
 
         intent.addFlags(
             Intent.FLAG_ACTIVITY_NEW_TASK or
-                Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
-                Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP
         )
 
         val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {

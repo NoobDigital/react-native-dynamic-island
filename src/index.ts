@@ -20,15 +20,17 @@ export type DynamicIslandContentState = Record<string, string>;
  * for its lifetime — as opposed to DynamicIslandContentState, which changes
  * on every update.
  *
- * iOS only. Android ignores this (it derives its icon from the host app
- * automatically and has no per-step icon track).
+ * Style fields below (titleColor, titleFontSize, progressColor,
+ * progressFontSize, iconColor, iconSize) are all optional. Omit any of them
+ * to keep the existing v1.0.1 default look — nothing changes unless you
+ * explicitly set it.
  */
 export interface DynamicIslandAttributes {
   /** Shown in the widget's brand/footer row. */
   brandName: string;
   /**
    * SF Symbol names, one per step, in stage order — drives the progress
-   * track UI. Falls back to a default 4-step set on the native side if omitted.
+   * track UI (iOS). Falls back to a default 4-step set on the native side if omitted.
    */
   stepIcons?: string[];
   /**
@@ -38,6 +40,50 @@ export interface DynamicIslandAttributes {
    * not found.
    */
   logoAssetName?: string;
+  /**
+   * Android only. Optional array of drawable resource names, one per step,
+   * overriding the generic dot/checkmark track with custom icons.
+   */
+  androidStepIcons?: string[];
+
+  // ── Style config (v1.0.2+) ────────────────────────────────────────────
+  // All optional. Hex colors accept "#RRGGBB" (with or without the `#`),
+  // or "#AARRGGBB" if you need alpha (e.g. statusColor's default is a
+  // translucent white). Supported identically on iOS and Android.
+
+  /** Color of the title text. Default: white (`#FFFFFF`). */
+  titleColor?: string;
+  /** Font size of the title text, in pt (iOS) / sp (Android). Default: 15. */
+  titleFontSize?: number;
+  /** Color of the status/subtitle text. Default: `#FFFFFF` at ~60% opacity. */
+  statusColor?: string;
+  /** Font size of the status/subtitle text, in pt (iOS) / sp (Android). Default: 13. */
+  statusFontSize?: number;
+  /** Color of the brand name text in the footer row. Default: orange (`#FF9500`). */
+  brandColor?: string;
+  /** Font size of the brand name text in the footer row, in pt (iOS) / sp (Android). Default: 12. */
+  brandFontSize?: number;
+  /**
+   * Color of the "done" step circles and connector lines in the progress
+   * track. Default: orange (`#FF9500`).
+   */
+  progressColor?: string;
+  /**
+   * Font size of the ETA label in the footer row (the text tied to the
+   * progress/footer row — there's no separate progress-percentage text in
+   * the current UI). In pt (iOS) / sp (Android). Default: 12.
+   */
+  progressFontSize?: number;
+  /**
+   * Color of the icon/checkmark drawn inside a completed ("done") step
+   * circle. Default: white (`#FFFFFF`).
+   */
+  iconColor?: string;
+  /**
+   * Diameter of each step circle in the progress track, in pt (iOS) / dp
+   * (Android). Default: 26.
+   */
+  iconSize?: number;
 }
 
 /**
@@ -54,8 +100,8 @@ export async function areActivitiesEnabled(): Promise<boolean> {
  * notification on Android). Resolves with an id for the activity/notification.
  * Only one runs at a time — calling this again replaces the previous one.
  *
- * `attributes` is iOS-only fixed metadata (brand name, step icons, logo) —
- * set once here and not resendable via updateActivity. Ignored on Android.
+ * `attributes` is fixed metadata (brand name, step icons, logo, style) —
+ * set once here and not resendable via updateActivity.
  */
 export async function startActivity(
   content: DynamicIslandContentState,

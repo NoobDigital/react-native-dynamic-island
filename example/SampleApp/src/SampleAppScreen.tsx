@@ -29,6 +29,19 @@ const BRAND: DynamicIslandAttributes = {
   brandName: 'NoobEats',
   stepIcons: ['checkmark', 'bag.fill', 'bicycle', 'mappin.and.ellipse'], // For ios, optional. Android ignores this. can be any SF Symbol name, one per stage, in order. Drives the progress track UI. https://developer.apple.com/sf-symbols/
   logoAssetName: Platform.OS === 'ios' ? 'BrandLogo' : 'noobeats_logo', // optional
+
+  // ── Style config (v1.0.2+) ────────────────────────────────────────────
+  // All optional — omit any of these to keep the v1.0.1 default look.
+  titleColor: '#ffffff',
+  titleFontSize: 16,
+  statusColor: '#eae7e7', // status/subtitle line (8-digit hex = alpha + RGB)
+  statusFontSize: 13,
+  brandColor: '#FF9500', // brand name text in the footer row
+  brandFontSize: 12,
+  progressColor: '#FF9500', // "done" step circles/connector lines
+  progressFontSize: 12, // ETA label in the footer row
+  iconColor: '#FFFFFF', // checkmark/icon tint inside a "done" step circle
+  iconSize: 28, // diameter of each step circle
 };
 
 const STAGES: DynamicIslandContentState[] = [
@@ -131,6 +144,11 @@ function LiveCardPreview({ content }: { content: DynamicIslandContentState | nul
     <View style={styles.liveCard}>
       <View style={styles.liveCardTopRow}>
         <View style={styles.liveCardDot} />
+        {/* In-app preview only — this JS card doesn't read BRAND's style
+            attrs, since it's just a mockup of the OS-level card. The real
+            styling (titleColor/titleFontSize/progressColor/progressFontSize/
+            iconColor/iconSize) is applied natively to the actual Live
+            Activity (iOS) / notification (Android). */}
         <Text style={styles.liveCardTitle}>{content.title}</Text>
         <Text style={styles.liveCardEta}>{content.eta}</Text>
       </View>
@@ -307,8 +325,8 @@ export default function SampleAppScreen() {
   const handleStart = useCallback(async () => {
     setStarting(true);
     try {
-      await startActivity(STAGES[0],BRAND);
-  
+      await startActivity(STAGES[0], BRAND);
+
       setCurrentContent(STAGES[0]);
       setStageIndex(0);
       setRunning(true);
@@ -454,7 +472,9 @@ export default function SampleAppScreen() {
           README). On Android there's no hardware equivalent to the Dynamic
           Island pill, so the same calls drive an ongoing, lock-screen
           notification instead — the closest real feature Android offers for
-          live order tracking.
+          live order tracking. Title color/size, progress color/size, and
+          icon color/size are all configurable via the BRAND attributes
+          object above and are applied natively on both platforms.
         </Text>
       </View>
 

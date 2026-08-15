@@ -23,16 +23,49 @@ public struct DynamicIslandAttributes: ActivityAttributes {
     public var stepIcons: [String]
     public var logoAssetName: String?
 
+    // ── Style config (v1.0.2+) ─────────────────────────────────────────
+    // All optional; a nil value means "use the widget's built-in default".
+    public var titleColor: String?
+    public var titleFontSize: Double?
+    public var statusColor: String?
+    public var statusFontSize: Double?
+    public var brandColor: String?
+    public var brandFontSize: Double?
+    public var progressColor: String?
+    public var progressFontSize: Double?
+    public var iconColor: String?
+    public var iconSize: Double?
+
     public init(
         name: String,
         brandName: String,
         stepIcons: [String],
-        logoAssetName: String?
+        logoAssetName: String?,
+        titleColor: String? = nil,
+        titleFontSize: Double? = nil,
+        statusColor: String? = nil,
+        statusFontSize: Double? = nil,
+        brandColor: String? = nil,
+        brandFontSize: Double? = nil,
+        progressColor: String? = nil,
+        progressFontSize: Double? = nil,
+        iconColor: String? = nil,
+        iconSize: Double? = nil
     ) {
         self.name = name
         self.brandName = brandName
         self.stepIcons = stepIcons
         self.logoAssetName = logoAssetName
+        self.titleColor = titleColor
+        self.titleFontSize = titleFontSize
+        self.statusColor = statusColor
+        self.statusFontSize = statusFontSize
+        self.brandColor = brandColor
+        self.brandFontSize = brandFontSize
+        self.progressColor = progressColor
+        self.progressFontSize = progressFontSize
+        self.iconColor = iconColor
+        self.iconSize = iconSize
     }
 }
 
@@ -116,11 +149,34 @@ public class DynamicIsland: NSObject {
 
                 let logoAssetName = attrs["logoAssetName"] as? String
 
+                // Style config — all optional, nil falls through to the
+                // widget's own defaults so existing integrations are unaffected.
+                let titleColor = attrs["titleColor"] as? String
+                let titleFontSize = Self.doubleValue(attrs["titleFontSize"])
+                let statusColor = attrs["statusColor"] as? String
+                let statusFontSize = Self.doubleValue(attrs["statusFontSize"])
+                let brandColor = attrs["brandColor"] as? String
+                let brandFontSize = Self.doubleValue(attrs["brandFontSize"])
+                let progressColor = attrs["progressColor"] as? String
+                let progressFontSize = Self.doubleValue(attrs["progressFontSize"])
+                let iconColor = attrs["iconColor"] as? String
+                let iconSize = Self.doubleValue(attrs["iconSize"])
+
                 let activityAttributes = DynamicIslandAttributes(
                     name: "DynamicIslandActivity",
                     brandName: brandName,
                     stepIcons: stepIcons,
-                    logoAssetName: logoAssetName
+                    logoAssetName: logoAssetName,
+                    titleColor: titleColor,
+                    titleFontSize: titleFontSize,
+                    statusColor: statusColor,
+                    statusFontSize: statusFontSize,
+                    brandColor: brandColor,
+                    brandFontSize: brandFontSize,
+                    progressColor: progressColor,
+                    progressFontSize: progressFontSize,
+                    iconColor: iconColor,
+                    iconSize: iconSize
                 )
 
                 let state = DynamicIslandAttributes.ContentState(
@@ -285,5 +341,17 @@ public class DynamicIsland: NSObject {
         }
 
         return result
+    }
+
+    // MARK: - Style value helpers
+
+    /// Bridge sends numeric attrs (titleFontSize, iconSize, etc.) as NSNumber.
+    /// Returns nil (not 0) when the key is absent, so the widget can fall
+    /// back to its own default rather than rendering a zero-size element.
+    private static func doubleValue(_ value: Any?) -> Double? {
+        guard let number = value as? NSNumber else {
+            return nil
+        }
+        return number.doubleValue
     }
 }
