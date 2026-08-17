@@ -605,6 +605,15 @@ Issues and PRs welcome. Please include repro steps and, for native issues,
 your RN version, iOS/Android OS version, and whether New Architecture is
 enabled.
 
+## Support
+
+If this project helped you, consider supporting its development.
+
+<a href="https://buymeacoffee.com/maheshvirus">
+  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" height="50" alt="Buy Me A Coffee" />
+</a>
+
+
 ## License
 
 MIT © [NoobDigital](https://github.com/NoobDigital)
